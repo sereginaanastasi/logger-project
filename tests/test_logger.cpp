@@ -14,7 +14,6 @@ std::string ReadFile(const std::string& filename)
     return buffer.str();
 }
 
-// Test 1: a message at or above the default level should be written to the file.
 bool TestMessageAboveDefaultLevelIsWritten()
 {
     const std::string filename = "test1.log";
@@ -35,7 +34,6 @@ bool TestMessageAboveDefaultLevelIsWritten()
     return passed;
 }
 
-// Test 2: a message below the default level should NOT be written to the file.
 bool TestMessageBelowDefaultLevelIsFiltered()
 {
     const std::string filename = "test2.log";
@@ -56,7 +54,6 @@ bool TestMessageBelowDefaultLevelIsFiltered()
     return passed;
 }
 
-// Test 3: SetDefaultLevel should change filtering behavior after construction.
 bool TestSetDefaultLevelChangesFiltering()
 {
     const std::string filename = "test3.log";
@@ -81,7 +78,6 @@ bool TestSetDefaultLevelChangesFiltering()
     return passed;
 }
 
-// Test 4: the log entry should contain the correct level tag.
 bool TestLogEntryContainsCorrectLevel()
 {
     const std::string filename = "test4.log";
@@ -102,7 +98,6 @@ bool TestLogEntryContainsCorrectLevel()
     return passed;
 }
 
-// Test 5: IsOpen() should return true for a valid path and false for an invalid one.
 bool TestIsOpenReflectsFileState()
 {
     const std::string filename = "test5.log";

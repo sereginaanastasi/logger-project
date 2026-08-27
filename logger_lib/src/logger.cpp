@@ -13,7 +13,7 @@ class Logger::Impl {
 public:
     std::ofstream file;
     Level defaultLevel;
-    mutable std::mutex mutex; // "mutable" allows locking even in const methods (like GetDefaultLevel)
+    mutable std::mutex mutex;
 
     Impl(const std::string& filename, Level level)
         : defaultLevel(level)
@@ -50,7 +50,7 @@ namespace {
         std::time_t now_c = std::chrono::system_clock::to_time_t(now);
 
         std::tm tm_buf{};
-        localtime_r(&now_c, &tm_buf);
+        localtime_r(&now_c, &tm_buf); // thread-safe variant of localtime
 
         std::ostringstream oss;
         oss << std::put_time(&tm_buf, "%Y-%m-%d %H:%M:%S");
@@ -61,13 +61,10 @@ namespace {
 
 bool Logger::Log(const std::string& message, Level level)
 {
-    // Lock for the whole duration of this method: we read defaultLevel
-    // and write to the file, both of which must stay consistent even
-    // if another thread calls Log()/SetDefaultLevel() at the same time.
     std::lock_guard<std::mutex> lock(pImpl->mutex);
 
     if (level < pImpl->defaultLevel) {
-        return true;
+        return true; // filtered out, not an error
     }
 
     if (!pImpl->file.is_open()) {

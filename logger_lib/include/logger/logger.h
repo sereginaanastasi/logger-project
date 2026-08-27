@@ -21,19 +21,15 @@ public:
     Logger(const std::string& filename, Level defaultLevel);
     ~Logger();
 
-    // Writes a message to the log if its level is high enough.
-    // Thread-safe: can be called concurrently from multiple threads.
+    // Writes a message to the log if its level is >= the current default level.
+    // Thread-safe.
     bool Log(const std::string& message, Level level);
 
-    // Changes the default importance level after construction.
     // Thread-safe.
     void SetDefaultLevel(Level level);
-
-    // Returns the current default importance level.
-    // Thread-safe.
     Level GetDefaultLevel() const;
 
-        // Returns true if the log file was successfully opened and is ready to accept writes.
+    // Returns false if the log file could not be opened.
     bool IsOpen() const;
 
 private:

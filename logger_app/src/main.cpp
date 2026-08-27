@@ -6,35 +6,28 @@
 #include <mutex>
 #include <condition_variable>
 #include <queue>
-#include <atomic>
-#include <sstream>
 
-// One "task" to be written to the log — this is what we put in the queue.
+// A single log write request, passed from the input thread to the writer thread.
 struct LogTask {
     std::string message;
     logger::Level level;
 };
 
-// Thread-safe wrapper around the message queue.
+// Thread-safe producer-consumer queue connecting the input thread
+// (producer) and the writer thread (consumer).
 class LogQueue {
 public:
-    // Add a task to the queue (called from the main/input thread).
     void Push(LogTask task)
     {
         {
             std::lock_guard<std::mutex> lock(mutex_);
-            // lock_guard automatically locks mutex_ on creation and
-            // unlocks it when the scope ends. This protects queue_
-            // from being accessed by two threads at the same time.
             queue_.push(std::move(task));
         }
-        cv_.notify_one(); // wake up the writer thread if it's sleeping
+        cv_.notify_one();
     }
 
-    // Take a task from the queue (called from the writer thread).
-    // If the queue is empty, the thread sleeps here instead of busy-waiting.
-    // Returns false if a stop signal was received and the queue is empty
-    // (meaning it's time to shut down).
+    // Blocks until a task is available or Stop() has been called.
+    // Returns false once the queue is empty and stopped (safe to exit).
     bool Pop(LogTask& outTask)
     {
         std::unique_lock<std::mutex> lock(mutex_);
@@ -49,8 +42,6 @@ public:
         return true;
     }
 
-    // Signal the writer thread that no more tasks will arrive —
-    // needed for a clean shutdown.
     void Stop()
     {
         {
@@ -67,9 +58,7 @@ private:
     bool stopped_ = false;
 };
 
-// Parses user input.
-// Expected format: "message text;LEVEL" — the level part is optional.
-// Example: "Server started;INFO" or just "Server started" (uses the default level).
+// Parses "message;LEVEL" input. The level part is optional.
 bool ParseInput(const std::string& input, std::string& outMessage, bool& hasLevel, logger::Level& outLevel)
 {
     auto pos = input.rfind(';');
@@ -90,7 +79,7 @@ bool ParseInput(const std::string& input, std::string& outMessage, bool& hasLeve
     } else if (levelStr == "ERROR") {
         outLevel = logger::Level::Error;
     } else {
-        return false; // unknown level — treat input as invalid
+        return false;
     }
 
     hasLevel = true;
@@ -121,15 +110,16 @@ int main(int argc, char* argv[])
     }
 
     logger::Logger log(filename, defaultLevel);
-    
-        if (!log.IsOpen()) {
+
+    if (!log.IsOpen()) {
         std::cerr << "Error: could not open log file '" << filename << "' for writing.\n";
         return 1;
     }
+
     LogQueue queue;
 
-    // Start the writer thread. It runs in the background for the
-    // whole lifetime of the program.
+    // Background thread: pulls tasks off the queue and writes them to the log,
+    // so the input loop below is never blocked by file I/O.
     std::thread writerThread([&queue, &log]() {
         LogTask task;
         while (queue.Pop(task)) {
@@ -144,7 +134,7 @@ int main(int argc, char* argv[])
     while (true) {
         std::cout << "> ";
         if (!std::getline(std::cin, input)) {
-            break; // input stream ended (e.g. Ctrl+D)
+            break;
         }
 
         if (input == "exit") {
@@ -152,7 +142,7 @@ int main(int argc, char* argv[])
         }
 
         if (input.empty()) {
-            continue; // ignore empty lines instead of pushing an empty message
+            continue;
         }
 
         std::string message;
@@ -171,10 +161,9 @@ int main(int argc, char* argv[])
         queue.Push(LogTask{message, level});
     }
 
-    // Tell the writer thread no more messages will come, and wait for it to finish.
     queue.Stop();
     writerThread.join();
 
-    std::cout << "Program finished.\n";
+    std::cout << "Program finished\n";
     return 0;
 }
