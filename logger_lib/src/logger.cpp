@@ -93,4 +93,10 @@ Level Logger::GetDefaultLevel() const
     return pImpl->defaultLevel;
 }
 
+bool Logger::IsOpen() const
+{
+    std::lock_guard<std::mutex> lock(pImpl->mutex);
+    return pImpl->file.is_open();
+}
+
 } // namespace logger

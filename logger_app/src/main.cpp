@@ -121,6 +121,11 @@ int main(int argc, char* argv[])
     }
 
     logger::Logger log(filename, defaultLevel);
+    
+        if (!log.IsOpen()) {
+        std::cerr << "Error: could not open log file '" << filename << "' for writing.\n";
+        return 1;
+    }
     LogQueue queue;
 
     // Start the writer thread. It runs in the background for the
@@ -144,6 +149,10 @@ int main(int argc, char* argv[])
 
         if (input == "exit") {
             break;
+        }
+
+        if (input.empty()) {
+            continue; // ignore empty lines instead of pushing an empty message
         }
 
         std::string message;

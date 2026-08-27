@@ -33,6 +33,9 @@ public:
     // Thread-safe.
     Level GetDefaultLevel() const;
 
+        // Returns true if the log file was successfully opened and is ready to accept writes.
+    bool IsOpen() const;
+
 private:
     class Impl;
     Impl* pImpl;
